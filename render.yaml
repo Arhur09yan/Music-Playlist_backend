@@ -1,0 +1,62 @@
+# Render Blueprint Configuration
+# This file can be used to deploy all services at once using Render Blueprint
+
+services:
+  # PostgreSQL Database
+  - type: pspg
+    name: music-db
+    databaseName: music_db
+    user: music_user
+    plan: free
+    region: oregon # Change to your preferred region
+
+  # FastAPI Backend
+  - type: web
+    name: music-api
+    env: python
+    region: oregon # Change to your preferred region
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: music-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: 30
+      - key: REFRESH_TOKEN_EXPIRE_DAYS
+        value: 7
+      - key: DEBUG
+        value: False
+      - key: API_V1_STR
+        value: /api/v1
+      - key: AUDIO_STORAGE_DIR
+        value: audio_storage
+      - key: SPOTIFY_CLIENT_ID
+        sync: false # Set manually in dashboard
+      - key: SPOTIFY_CLIENT_SECRET
+        sync: false # Set manually in dashboard
+
+  # Next.js Frontend
+  - type: web
+    name: music-app
+    env: node
+    region: oregon # Change to your preferred region
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NEXT_PUBLIC_BACKEND_URL
+        fromService:
+          name: music-api
+          type: web
+          property: host
+          format: https://{{host}}/api/v1
+      - key: NODE_ENV
+        value: production

@@ -1,0 +1,49 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      - POSTGRES_USER=music_user
+      - POSTGRES_PASSWORD=music_password
+      - POSTGRES_DB=music_db
+    ports:
+      - "5433:5432" # Changed to 5433 to avoid conflict with local PostgreSQL
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U music_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@musicapp.com
+      - PGADMIN_DEFAULT_PASSWORD=admin
+      - PGADMIN_CONFIG_SERVER_MODE=False
+    ports:
+      - "5050:80"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
+  api:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://music_user:music_password@db:5432/music_db
+    volumes:
+      - ./app:/app/app
+      - ./audio_storage:/app/audio_storage
+
+volumes:
+  postgres_data:
+  pgadmin_data:
