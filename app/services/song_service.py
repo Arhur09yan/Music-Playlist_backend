@@ -44,22 +44,25 @@ class SongService:
         """Get all songs with liked status. If user_id is provided, checks if user liked each song."""
         songs = db.query(Song).order_by(Song.id.asc()).offset(skip).limit(limit).all()
         
+        # Get all song IDs that have likes (any user) for efficiency
+        songs_with_likes = {like.song_id for like in db.query(Like.song_id).distinct().all()}
+        
         # Get all song IDs that user has liked (for efficiency) if user_id provided
-        liked_song_ids = set()
+        user_liked_song_ids = set()
         if user_id is not None:
-            liked_song_ids = {like.song_id for like in db.query(Like).filter(Like.user_id == user_id).all()}
+            user_liked_song_ids = {like.song_id for like in db.query(Like).filter(Like.user_id == user_id).all()}
         
         # Create SongResponse with explicit liked field
         result = []
         for song in songs:
-            # Use database liked column from songs table
-            # If user_id provided, also check if user specifically liked it (for user-specific status)
+            # Check if song has any likes in the likes table
+            # If user_id provided, also check if this specific user liked it
             if user_id is not None:
                 # User-specific: check if this user liked the song
-                liked_status = song.id in liked_song_ids
+                liked_status = song.id in user_liked_song_ids
             else:
-                # No user: use the liked column from songs table
-                liked_status = song.liked if hasattr(song, 'liked') and song.liked is not None else False
+                # No user: check if song has any likes (any user)
+                liked_status = song.id in songs_with_likes
             
             # Convert song to dict and add liked field
             song_dict = {
@@ -91,15 +94,16 @@ class SongService:
                 detail="Song not found"
             )
         
-        # Check if user liked this song, or use database liked column
+        # Check if song has any likes in the likes table
+        # If user_id provided, check if this specific user liked it
         if user_id is not None:
             # User-specific: check if this user liked the song
             liked = db.query(Like).filter(
                 (Like.user_id == user_id) & (Like.song_id == song_id)
             ).first() is not None
         else:
-            # No user: use the liked column from songs table
-            liked = song.liked if hasattr(song, 'liked') and song.liked is not None else False
+            # No user: check if song has any likes (any user)
+            liked = db.query(Like).filter(Like.song_id == song_id).first() is not None
         
         # Create SongResponse with explicit liked field
         song_dict = {
@@ -134,15 +138,16 @@ class SongService:
         db.commit()
         db.refresh(song)
         
-        # Check if user liked this song, or use database liked column
+        # Check if song has any likes in the likes table
+        # If user_id provided, check if this specific user liked it
         if user_id is not None:
             # User-specific: check if this user liked the song
             liked = db.query(Like).filter(
                 (Like.user_id == user_id) & (Like.song_id == song_id)
             ).first() is not None
         else:
-            # No user: use the liked column from songs table
-            liked = song.liked if hasattr(song, 'liked') and song.liked is not None else False
+            # No user: check if song has any likes (any user)
+            liked = db.query(Like).filter(Like.song_id == song_id).first() is not None
         
         # Create SongResponse with explicit liked field
         song_dict = {
@@ -198,22 +203,25 @@ class SongService:
         )
         songs = query.order_by(Song.id.asc()).offset(skip).limit(limit).all()
         
+        # Get all song IDs that have likes (any user) for efficiency
+        songs_with_likes = {like.song_id for like in db.query(Like.song_id).distinct().all()}
+        
         # Get all song IDs that user has liked (for efficiency) if user_id provided
-        liked_song_ids = set()
+        user_liked_song_ids = set()
         if user_id is not None:
-            liked_song_ids = {like.song_id for like in db.query(Like).filter(Like.user_id == user_id).all()}
+            user_liked_song_ids = {like.song_id for like in db.query(Like).filter(Like.user_id == user_id).all()}
         
         # Create SongResponse with explicit liked field
         result = []
         for song in songs:
-            # Use database liked column from songs table
-            # If user_id provided, also check if user specifically liked it (for user-specific status)
+            # Check if song has any likes in the likes table
+            # If user_id provided, also check if this specific user liked it
             if user_id is not None:
                 # User-specific: check if this user liked the song
-                liked_status = song.id in liked_song_ids
+                liked_status = song.id in user_liked_song_ids
             else:
-                # No user: use the liked column from songs table
-                liked_status = song.liked if hasattr(song, 'liked') and song.liked is not None else False
+                # No user: check if song has any likes (any user)
+                liked_status = song.id in songs_with_likes
             
             song_dict = {
                 "id": song.id,
