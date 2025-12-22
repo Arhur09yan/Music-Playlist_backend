@@ -43,9 +43,8 @@ class SongService:
     def get_all_songs(db: Session, skip: int = 0, limit: int = 20, user_id: Optional[int] = None) -> List[SongResponse]:
         """Get all songs with liked status. If user_id is provided, checks if user liked each song."""
         songs = db.query(Song).order_by(Song.id.asc()).offset(skip).limit(limit).all()
-        
-        # Get all song IDs that have likes (any user) for efficiency
-        songs_with_likes = {like.song_id for like in db.query(Like.song_id).distinct().all()}
+    
+        songs_with_likes = {like.song_id for like in db.query(Like).all()}
         
         # Get all song IDs that user has liked (for efficiency) if user_id provided
         user_liked_song_ids = set()
@@ -204,7 +203,8 @@ class SongService:
         songs = query.order_by(Song.id.asc()).offset(skip).limit(limit).all()
         
         # Get all song IDs that have likes (any user) for efficiency
-        songs_with_likes = {like.song_id for like in db.query(Like.song_id).distinct().all()}
+        # Query full Like objects and get distinct song_ids
+        songs_with_likes = {like.song_id for like in db.query(Like).all()}
         
         # Get all song IDs that user has liked (for efficiency) if user_id provided
         user_liked_song_ids = set()
