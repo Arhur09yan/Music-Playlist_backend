@@ -15,6 +15,7 @@ from app.services.song_service import SongService
 from app.services.spotify_service import SpotifyService
 from app.services.audio_service import AudioService
 from app.utils.security import decode_token
+from app.models.song import Song
 
 logger = logging.getLogger(__name__)
 
@@ -230,11 +231,11 @@ def stream_song_audio(song_id: int, db: Session = Depends(get_db)):
     Stream audio file for a song.
     Returns the local cached file if available, otherwise streams from original URL.
     """
-    song = SongService.get_song(db, song_id)
+    song = db.query(Song).filter(Song.id == song_id).first()
     if not song:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Song not found"
+            detail="Song not found",
         )
     
     # Try to use local file first

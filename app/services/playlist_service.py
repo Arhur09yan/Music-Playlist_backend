@@ -1,12 +1,24 @@
 from sqlalchemy.orm import Session, joinedload
 from app.models.playlist import Playlist, PlaylistSong, Like
 from app.models.song import Song
-from app.schemas.playlist import PlaylistCreate, PlaylistUpdate
+from app.schemas.playlist import PlaylistCreate, PlaylistUpdate, PlaylistDetailResponse
 from app.schemas.song import SongCreate, SongResponse
 from app.services.song_service import SongService
 from fastapi import HTTPException, status
 
+
 class PlaylistService:
+    @staticmethod
+    def _get_playlist_model(db: Session, playlist_id: int) -> Playlist:
+        """Internal helper: always return ORM Playlist model or raise 404."""
+        playlist = db.query(Playlist).filter(Playlist.id == playlist_id).first()
+        if not playlist:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Playlist not found",
+            )
+        return playlist
+
     @staticmethod
     def create_playlist(db: Session, playlist_create: PlaylistCreate, user_id: int) -> Playlist:
         db_playlist = Playlist(
@@ -24,18 +36,61 @@ class PlaylistService:
         return db.query(Playlist).filter(Playlist.owner_id == user_id).offset(skip).limit(limit).all()
 
     @staticmethod
-    def get_playlist(db: Session, playlist_id: int) -> Playlist:
-        playlist = db.query(Playlist).filter(Playlist.id == playlist_id).first()
+    def get_playlist(db: Session, playlist_id: int) -> PlaylistDetailResponse:
+        """
+        Get a playlist with all its songs.
+        Returns PlaylistDetailResponse, including songs as SongResponse list.
+        """
+        playlist = (
+            db.query(Playlist)
+            .options(joinedload(Playlist.songs).joinedload(PlaylistSong.song))
+            .filter(Playlist.id == playlist_id)
+            .first()
+        )
         if not playlist:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Playlist not found"
+                detail="Playlist not found",
             )
-        return playlist
+        
+        # Build SongResponse list from related PlaylistSong entries
+        songs: list[SongResponse] = []
+        for playlist_song in playlist.songs:
+            song = playlist_song.song
+            if not song:
+                continue
+            song_dict = {
+                "id": song.id,
+                "title": song.title,
+                "artist": song.artist,
+                "album": song.album,
+                "genre": song.genre,
+                "duration": song.duration,
+                "url": song.url,
+                "local_file_path": song.local_file_path,
+                "album_id": song.album_id,
+                "image_url": song.image_url,
+                "created_at": song.created_at,
+                # For playlist context we don't know user, so liked is False
+                "liked": False,
+            }
+            songs.append(SongResponse(**song_dict))
+
+        # Build detailed response with songs
+        return PlaylistDetailResponse(
+            id=playlist.id,
+            name=playlist.name,
+            description=playlist.description,
+            owner_id=playlist.owner_id,
+            created_at=playlist.created_at,
+            updated_at=playlist.updated_at,
+            songs=songs,
+        )
 
     @staticmethod
     def update_playlist(db: Session, playlist_id: int, playlist_update: PlaylistUpdate, user_id: int) -> Playlist:
-        playlist = PlaylistService.get_playlist(db, playlist_id)
+        # Use ORM model internally
+        playlist = PlaylistService._get_playlist_model(db, playlist_id)
         
         if playlist.owner_id != user_id:
             raise HTTPException(
@@ -52,7 +107,8 @@ class PlaylistService:
 
     @staticmethod
     def delete_playlist(db: Session, playlist_id: int, user_id: int):
-        playlist = PlaylistService.get_playlist(db, playlist_id)
+        # Use ORM model internally
+        playlist = PlaylistService._get_playlist_model(db, playlist_id)
         
         if playlist.owner_id != user_id:
             raise HTTPException(
@@ -66,7 +122,8 @@ class PlaylistService:
 
     @staticmethod
     def add_song_to_playlist(db: Session, playlist_id: int, song_id: int, user_id: int):
-        playlist = PlaylistService.get_playlist(db, playlist_id)
+        # Use ORM model for mutation
+        playlist = PlaylistService._get_playlist_model(db, playlist_id)
         
         if playlist.owner_id != user_id:
             raise HTTPException(
@@ -95,12 +152,14 @@ class PlaylistService:
         playlist_song = PlaylistSong(playlist_id=playlist_id, song_id=song_id)
         db.add(playlist_song)
         db.commit()
-        db.refresh(playlist)
-        return playlist
+
+        # Return updated playlist detail (with songs)
+        return PlaylistService.get_playlist(db, playlist_id)
 
     @staticmethod
     def remove_song_from_playlist(db: Session, playlist_id: int, song_id: int, user_id: int):
-        playlist = PlaylistService.get_playlist(db, playlist_id)
+        # Use ORM model for authorization check
+        playlist = PlaylistService._get_playlist_model(db, playlist_id)
         
         if playlist.owner_id != user_id:
             raise HTTPException(

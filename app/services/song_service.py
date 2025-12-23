@@ -8,36 +8,36 @@ from fastapi import HTTPException, status
 
 class SongService:
     @staticmethod
-    def create_song(db: Session, song_create: SongCreate, user_id: Optional[int] = None) -> SongResponse:
-        """Create a song and return with liked status."""
-        db_song = Song(**song_create.model_dump())
-        db.add(db_song)
-        db.commit()
-        db.refresh(db_song)
+    # def create_song(db: Session, song_create: SongCreate, user_id: Optional[int] = None) -> SongResponse:
+    #     """Create a song and return with liked status."""
+    #     db_song = Song(**song_create.model_dump())
+    #     db.add(db_song)
+    #     db.commit()
+    #     db.refresh(db_song)
         
-        # Check if user liked this song (should be False for new song, but check anyway)
-        liked = False
-        if user_id is not None:
-            liked = db.query(Like).filter(
-                (Like.user_id == user_id) & (Like.song_id == db_song.id)
-            ).first() is not None
+    #     # Check if user liked this song (should be False for new song, but check anyway)
+    #     liked = False
+    #     if user_id is not None:
+    #         liked = db.query(Like).filter(
+    #             (Like.user_id == user_id) & (Like.song_id == db_song.id)
+    #         ).first() is not None
         
-        # Create SongResponse with explicit liked field
-        song_dict = {
-            "id": db_song.id,
-            "title": db_song.title,
-            "artist": db_song.artist,
-            "album": db_song.album,
-            "genre": db_song.genre,
-            "duration": db_song.duration,
-            "url": db_song.url,
-            "local_file_path": db_song.local_file_path,
-            "album_id": db_song.album_id,
-            "image_url": db_song.image_url,
-            "created_at": db_song.created_at,
-            "liked": liked  # Explicitly set liked field
-        }
-        return SongResponse(**song_dict)
+    #     # Create SongResponse with explicit liked field
+    #     song_dict = {
+    #         "id": db_song.id,
+    #         "title": db_song.title,
+    #         "artist": db_song.artist,
+    #         "album": db_song.album,
+    #         "genre": db_song.genre,
+    #         "duration": db_song.duration,
+    #         "url": db_song.url,
+    #         "local_file_path": db_song.local_file_path,
+    #         "album_id": db_song.album_id,
+    #         "image_url": db_song.image_url,
+    #         "created_at": db_song.created_at,
+    #         "liked": liked  # Explicitly set liked field
+    #     }
+    #     return SongResponse(**song_dict)
 
     @staticmethod
     def get_all_songs(db: Session, skip: int = 0, limit: int = 20, user_id: Optional[int] = None) -> List[SongResponse]:
@@ -84,110 +84,110 @@ class SongService:
         return result
 
     @staticmethod
-    def get_song(db: Session, song_id: int, user_id: Optional[int] = None) -> SongResponse:
-        """Get a song by ID with liked status. If user_id is provided, checks if user liked the song."""
-        song = db.query(Song).filter(Song.id == song_id).first()
-        if not song:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Song not found"
-            )
+    # def get_song(db: Session, song_id: int, user_id: Optional[int] = None) -> SongResponse:
+    #     """Get a song by ID with liked status. If user_id is provided, checks if user liked the song."""
+    #     song = db.query(Song).filter(Song.id == song_id).first()
+    #     if not song:
+    #         raise HTTPException(
+    #             status_code=status.HTTP_404_NOT_FOUND,
+    #             detail="Song not found"
+    #         )
         
-        # Check if song has any likes in the likes table
-        # If user_id provided, check if this specific user liked it
-        if user_id is not None:
-            # User-specific: check if this user liked the song
-            liked = db.query(Like).filter(
-                (Like.user_id == user_id) & (Like.song_id == song_id)
-            ).first() is not None
-        else:
-            # No user: check if song has any likes (any user)
-            liked = db.query(Like).filter(Like.song_id == song_id).first() is not None
+    #     # Check if song has any likes in the likes table
+    #     # If user_id provided, check if this specific user liked it
+    #     if user_id is not None:
+    #         # User-specific: check if this user liked the song
+    #         liked = db.query(Like).filter(
+    #             (Like.user_id == user_id) & (Like.song_id == song_id)
+    #         ).first() is not None
+    #     else:
+    #         # No user: check if song has any likes (any user)
+    #         liked = db.query(Like).filter(Like.song_id == song_id).first() is not None
         
-        # Create SongResponse with explicit liked field
-        song_dict = {
-            "id": song.id,
-            "title": song.title,
-            "artist": song.artist,
-            "album": song.album,
-            "genre": song.genre,
-            "duration": song.duration,
-            "url": song.url,
-            "local_file_path": song.local_file_path,
-            "album_id": song.album_id,
-            "image_url": song.image_url,
-            "created_at": song.created_at,
-            "liked": liked
-        }
-        return SongResponse(**song_dict)
+    #     # Create SongResponse with explicit liked field
+    #     song_dict = {
+    #         "id": song.id,
+    #         "title": song.title,
+    #         "artist": song.artist,
+    #         "album": song.album,
+    #         "genre": song.genre,
+    #         "duration": song.duration,
+    #         "url": song.url,
+    #         "local_file_path": song.local_file_path,
+    #         "album_id": song.album_id,
+    #         "image_url": song.image_url,
+    #         "created_at": song.created_at,
+    #         "liked": liked
+    #     }
+    #     return SongResponse(**song_dict)
 
     @staticmethod
-    def update_song(db: Session, song_id: int, song_update: SongUpdate, user_id: Optional[int] = None) -> SongResponse:
-        """Update a song and return with liked status."""
-        song = db.query(Song).filter(Song.id == song_id).first()
-        if not song:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Song not found"
-            )
+    # def update_song(db: Session, song_id: int, song_update: SongUpdate, user_id: Optional[int] = None) -> SongResponse:
+    #     """Update a song and return with liked status."""
+    #     song = db.query(Song).filter(Song.id == song_id).first()
+    #     if not song:
+    #         raise HTTPException(
+    #             status_code=status.HTTP_404_NOT_FOUND,
+    #             detail="Song not found"
+    #         )
         
-        update_data = song_update.model_dump(exclude_unset=True)
-        for field, value in update_data.items():
-            setattr(song, field, value)
-        db.commit()
-        db.refresh(song)
+    #     update_data = song_update.model_dump(exclude_unset=True)
+    #     for field, value in update_data.items():
+    #         setattr(song, field, value)
+    #     db.commit()
+    #     db.refresh(song)
         
-        # Check if song has any likes in the likes table
-        # If user_id provided, check if this specific user liked it
-        if user_id is not None:
-            # User-specific: check if this user liked the song
-            liked = db.query(Like).filter(
-                (Like.user_id == user_id) & (Like.song_id == song_id)
-            ).first() is not None
-        else:
-            # No user: check if song has any likes (any user)
-            liked = db.query(Like).filter(Like.song_id == song_id).first() is not None
+    #     # Check if song has any likes in the likes table
+    #     # If user_id provided, check if this specific user liked it
+    #     if user_id is not None:
+    #         # User-specific: check if this user liked the song
+    #         liked = db.query(Like).filter(
+    #             (Like.user_id == user_id) & (Like.song_id == song_id)
+    #         ).first() is not None
+    #     else:
+    #         # No user: check if song has any likes (any user)
+    #         liked = db.query(Like).filter(Like.song_id == song_id).first() is not None
         
-        # Create SongResponse with explicit liked field
-        song_dict = {
-            "id": song.id,
-            "title": song.title,
-            "artist": song.artist,
-            "album": song.album,
-            "genre": song.genre,
-            "duration": song.duration,
-            "url": song.url,
-            "local_file_path": song.local_file_path,
-            "album_id": song.album_id,
-            "image_url": song.image_url,
-            "created_at": song.created_at,
-            "liked": liked  # Use database column or user-specific check
-        }
-        return SongResponse(**song_dict)
+    #     # Create SongResponse with explicit liked field
+    #     song_dict = {
+    #         "id": song.id,
+    #         "title": song.title,
+    #         "artist": song.artist,
+    #         "album": song.album,
+    #         "genre": song.genre,
+    #         "duration": song.duration,
+    #         "url": song.url,
+    #         "local_file_path": song.local_file_path,
+    #         "album_id": song.album_id,
+    #         "image_url": song.image_url,
+    #         "created_at": song.created_at,
+    #         "liked": liked  # Use database column or user-specific check
+    #     }
+    #     return SongResponse(**song_dict)
 
-    @staticmethod
-    def delete_song(db: Session, song_id: int):
-        """
-        Delete a song from the database.
-        This will also automatically delete all associated likes due to cascade delete.
-        All likes for this song will be removed, effectively setting liked=false for all users.
-        """
-        song = SongService.get_song(db, song_id)
+    # @staticmethod
+    # def delete_song(db: Session, song_id: int):
+    #     """
+    #     Delete a song from the database.
+    #     This will also automatically delete all associated likes due to cascade delete.
+    #     All likes for this song will be removed, effectively setting liked=false for all users.
+    #     """
+    #     song = SongService.get_song(db, song_id)
         
-        # Count likes before deletion (for response message)
-        likes_count = db.query(Like).filter(Like.song_id == song_id).count()
+    #     # Count likes before deletion (for response message)
+    #     likes_count = db.query(Like).filter(Like.song_id == song_id).count()
         
-        # Delete the song (cascade will automatically delete all associated likes)
-        db.delete(song)
-        db.commit()
+    #     # Delete the song (cascade will automatically delete all associated likes)
+    #     db.delete(song)
+    #     db.commit()
         
-        return {
-            "message": f"Song deleted successfully",
-            "deleted_likes_count": likes_count,
-            "song_id": song_id,
-            "song_title": song.title,
-            "song_artist": song.artist
-        }
+    #     return {
+    #         "message": f"Song deleted successfully",
+    #         "deleted_likes_count": likes_count,
+    #         "song_id": song_id,
+    #         "song_title": song.title,
+    #         "song_artist": song.artist
+    #     }
 
     @staticmethod
     def search_songs(db: Session, q: str, skip: int = 0, limit: int = 20, user_id: Optional[int] = None) -> List[SongResponse]:

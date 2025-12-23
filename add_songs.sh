@@ -29,3 +29,4 @@ docker compose run --rm \
 
 echo -e "\n${GREEN}✅ Done!${NC}"
 
+
