@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     
     class Config:
         env_file = ".env"
+        env_file_encoding = "utf-8"
+        # Environment variables take precedence over .env file
+        case_sensitive = False
 
 @lru_cache
 def get_settings():
